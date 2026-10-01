@@ -12,3 +12,4 @@ app/design/frontend/base/default/template/ainative            app/design/fronten
 skin/adminhtml/default/default/ainative                       skin/adminhtml/default/default/ainative
 skin/frontend/base/default/ainative                           skin/frontend/base/default/ainative
 app/locale/en_US/AiNative_Core.csv                            app/locale/en_US/AiNative_Core.csv
+app/locale/pl_PL/AiNative_Core.csv                            app/locale/pl_PL/AiNative_Core.csv
