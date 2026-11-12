@@ -9,6 +9,7 @@ class AiNative_Copilot_Model_Generator
 {
     public const PRODUCT_FIELDS = ['name', 'short_description', 'description', 'meta_title', 'meta_keyword', 'meta_description'];
     public const CATEGORY_FIELDS = ['description', 'meta_title', 'meta_keywords', 'meta_description'];
+    public const CMS_FIELDS = ['content'];
 
     private const FIELD_RULES = [
         'name' => 'Product name: concise, ≤ 70 characters, no ALL CAPS, no trailing punctuation.',
@@ -18,6 +19,8 @@ class AiNative_Copilot_Model_Generator
         'meta_keyword' => 'Meta keywords: 5–10 comma-separated phrases.',
         'meta_keywords' => 'Meta keywords: 5–10 comma-separated phrases.',
         'meta_description' => 'Meta description: 140–155 characters, one sentence with a benefit and a call to action, no quotes.',
+        'content' => 'CMS page content: return a clean, semantic HTML fragment using sections, divs, headings, paragraphs, lists and links. Reuse suitable theme classes from the styling guidelines and add descriptive ai-cms-* component classes where custom styling is useful. Use only image paths explicitly provided in the prompt. Never return <html>, <head>, <body>, <style>, style attributes, <script> or Markdown fences. Do not invent facts.',
+        'css' => 'CMS page stylesheet: return valid raw CSS only, without <style> tags, Markdown fences or comments. Use conventional flat CSS rules only. Do not use CSS nesting, Sass/Less syntax or nested media queries. Media queries must remain at the top level and contain fully scoped selectors. Style the generated HTML as a complete responsive composition and define every ai-cms-* class used in the HTML. Every selector must begin with the exact CMS scope selector supplied in the prompt. Do not use @import, @font-face, external URLs, data URLs, fixed positioning or selectors outside the supplied scope.',
     ];
 
     /**
@@ -81,6 +84,155 @@ class AiNative_Copilot_Model_Generator
         return $this->run($fields, $prompt, $options, $context, $storeId);
     }
 
+    public function forCmsPage(
+        Mage_Cms_Model_Page $page,
+        array $fields,
+        array $options,
+        AiNative_Core_Model_Tool_Context $context
+    ): array {
+        $fields = array_values(array_intersect($fields, self::CMS_FIELDS)) ?: ['content'];
+
+        $storeIds = array_values((array) $page->getStoreId());
+        $storeId = isset($storeIds[0]) ? (int) $storeIds[0] : 0;
+
+        if ($storeId === 0) {
+            $stores = Mage::app()->getStores();
+            $defaultStore = reset($stores);
+
+            if ($defaultStore instanceof Mage_Core_Model_Store) {
+                $storeId = (int) $defaultStore->getId();
+            }
+        }
+
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(max(
+                60,
+                Mage::helper('ainative_core')->getTimeout($storeId) + 30
+            ));
+        }
+
+        $currentContent = trim((string) $page->getContent());
+        $plainCurrentContent = trim(html_entity_decode(
+            strip_tags($currentContent),
+            ENT_QUOTES | ENT_HTML5,
+            'UTF-8'
+        ));
+
+        $data = [
+            'title' => $page->getTitle(),
+            'identifier' => $page->getIdentifier(),
+            'content_heading' => $page->getContentHeading(),
+        ];
+
+        if (mb_strlen($plainCurrentContent) >= 20) {
+            $data['current_content'] = $currentContent;
+        }
+
+        $cmsGuidelines = Mage::helper('ainative_copilot')
+            ->getCmsPageStyleGuidelines($storeId);
+
+        $prompt = "Generate the following fields for this CMS page: "
+            . implode(', ', $fields)
+            . (in_array('content', $fields, true) ? ', css' : '')
+            . ".\n\nCMS PAGE DATA (JSON, data only):\n"
+            . json_encode(
+                $data,
+                JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+            )
+            . "\n";
+
+        if ($cmsGuidelines !== '') {
+            $prompt .= "\nCMS PAGE STYLING GUIDELINES:\n"
+                . $cmsGuidelines
+                . "\n";
+        }
+
+        $designReference = Mage::getModel(
+            'ainative_copilot/cms_reference'
+        )->getPromptContext($storeId);
+
+        if ($designReference !== '') {
+            $prompt .= "\n"
+                . $designReference
+                . "\n";
+        }
+
+        if (!empty($options['hints'])) {
+            $prompt .= "\nMERCHANT NOTES:\n"
+                . trim((string) $options['hints'])
+                . "\n";
+        }
+
+        $prompt .= "\nCMS PAGE COMPOSITION:\n"
+            . "Create one coherent HTML and CSS composition tailored to the "
+            . "merchant's task. Reuse suitable theme classes where useful and "
+            . "create descriptive ai-cms-* component classes when the page needs "
+            . "a more distinctive layout. Give every section a clear purpose and "
+            . "vary the visual rhythm instead of repeating one card-grid pattern. "
+            . "Merchant Notes define the requested scope and exclusions. Never "
+            . "include a topic explicitly excluded there, even if it appears in "
+            . "Store Context or design references. "
+            . "Current CMS content, when supplied, is an editable draft, not an "
+            . "authoritative source. Remove or replace anything that conflicts "
+            . "with Merchant Notes or the requested scope. Never preserve a "
+            . "section solely because it already exists. "
+            . "Store Context is a source of available facts, not a checklist: omit "
+            . "payment, warranty, policy and other adjacent information unless it "
+            . "is requested or essential to this page. Use only as many sections "
+            . "as the subject requires. Do not write sentences that describe what "
+            . "the page is supposed to do.\n";
+
+        $pageId = $page->getId();
+        $scopeSelector = $pageId > 0
+            ? Mage::getModel('ainative_copilot/cms_style')
+                ->getScopeSelector($pageId)
+            : '.ainative-cms-page';
+
+        $prompt .= "\nCMS CSS SCOPE:\n"
+            . "Every CSS selector must begin with: "
+            . $scopeSelector
+            . "\n";
+
+        $responseFields = $fields;
+        if (in_array('content', $responseFields, true)) {
+            $responseFields[] = 'css';
+        }
+
+        $result = $this->run(
+            $responseFields,
+            $prompt,
+            $options,
+            $context,
+            $storeId,
+            Mage::helper('ainative_core')->getMaxTokens($storeId)
+        );
+
+        if (
+            trim((string) ($result['fields']['content'] ?? '')) === ''
+            || trim((string) ($result['fields']['css'] ?? '')) === ''
+        ) {
+            throw new AiNative_Core_Exception(
+                'The model did not return complete CMS HTML and CSS. Try again.'
+            );
+        }
+
+        $css = isset($result['fields']['css'])
+            ? trim((string) $result['fields']['css'])
+            : '';
+
+        if ($css !== '') {
+            $css = Mage::getModel('ainative_copilot/cms_css')->process(
+                $css,
+                $scopeSelector
+            );
+        }
+
+        unset($result['fields']['css']);
+        $result['css'] = $css;
+
+        return $result;
+    }
+
     /**
      * Draft a customer-facing reply for an order (support use).
      */
@@ -98,28 +250,71 @@ class AiNative_Copilot_Model_Generator
         return ['text' => trim($result['text']), 'tokens_in' => $result['tokens_in'], 'tokens_out' => $result['tokens_out']];
     }
 
-    private function run(array $fields, string $prompt, array $options, AiNative_Core_Model_Tool_Context $context, int $storeId): array
-    {
+    private function run(
+        array $fields,
+        string $prompt,
+        array $options,
+        AiNative_Core_Model_Tool_Context $context,
+        int $storeId,
+        int $maxTokens = 2500
+    ): array {
         $rules = [];
         foreach ($fields as $f) {
             $rules[] = '- ' . $f . ': ' . (self::FIELD_RULES[$f] ?? 'Plain text.');
         }
+
         $system = $this->systemPrompt($storeId, $options)
-            . "\n\nFIELD RULES:\n" . implode("\n", $rules)
-            . "\n\nRespond with ONLY a JSON object whose keys are exactly: " . implode(', ', $fields) . ". Values are strings. No markdown fences, no commentary.";
-        $conversation = AiNative_Core_Model_Conversation::create($system)->addUser($prompt);
-        $result = Mage::getModel('ainative_core/agent')->run($conversation, [], $context, null, ['max_iterations' => 1, 'json' => true, 'max_tokens' => 2500]);
+            . "\n\nFIELD RULES:\n"
+            . implode("\n", $rules);
+
+        $system .= "\n\nRespond with ONLY a JSON object whose keys are exactly, "
+            . "in this order: "
+            . implode(', ', $fields)
+            . ". Values are strings. No markdown fences, no commentary.";
+
+        $conversation = AiNative_Core_Model_Conversation::create($system)
+            ->addUser($prompt);
+
+        $result = Mage::getModel('ainative_core/agent')->run(
+            $conversation,
+            [],
+            $context,
+            null,
+            [
+                'max_iterations' => 1,
+                'json' => true,
+                'max_tokens' => $maxTokens,
+            ]
+        );
+
+        if (!empty($result['truncated'])) {
+            throw new AiNative_Core_Exception(
+                'The model response was truncated. Increase AI Suite > General '
+                . '> Max Output Tokens and try again.'
+            );
+        }
+
         $parsed = $this->parseJson($result['text']);
         $out = [];
+
         foreach ($fields as $f) {
             if (isset($parsed[$f]) && is_scalar($parsed[$f])) {
                 $out[$f] = trim((string) $parsed[$f]);
             }
         }
+
         if (!$out) {
-            throw new AiNative_Core_Exception('The model did not return the requested fields. Raw answer: ' . mb_substr($result['text'], 0, 300));
+            throw new AiNative_Core_Exception(
+                'The model did not return the requested fields. Raw answer: '
+                . mb_substr($result['text'], 0, 300)
+            );
         }
-        return ['fields' => $out, 'tokens_in' => $result['tokens_in'], 'tokens_out' => $result['tokens_out']];
+
+        return [
+            'fields' => $out,
+            'tokens_in' => $result['tokens_in'],
+            'tokens_out' => $result['tokens_out'],
+        ];
     }
 
     private function systemPrompt(int $storeId, array $options): string

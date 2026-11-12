@@ -40,6 +40,12 @@ class AiNative_Copilot_Block_Adminhtml_Catalog_Button extends Mage_Adminhtml_Blo
             $c = Mage::registry('current_category');
             return $c ? (int) $c->getId() : 0;
         }
+
+        if ($this->getEntityType() === 'cms') {
+            $page = Mage::registry('cms_page');
+            return $page ? (int) $page->getId() : 0;
+        }
+
         $p = Mage::registry('current_product') ?: Mage::registry('product');
         return $p ? (int) $p->getId() : 0;
     }
@@ -51,7 +57,30 @@ class AiNative_Copilot_Block_Adminhtml_Catalog_Button extends Mage_Adminhtml_Blo
 
     public function getFields(): array
     {
-        return $this->getEntityType() === 'category' ? AiNative_Copilot_Model_Generator::CATEGORY_FIELDS : AiNative_Copilot_Model_Generator::PRODUCT_FIELDS;
+        if ($this->getEntityType() === 'category') {
+            return AiNative_Copilot_Model_Generator::CATEGORY_FIELDS;
+        }
+
+        if ($this->getEntityType() === 'cms') {
+            return AiNative_Copilot_Model_Generator::CMS_FIELDS;
+        }
+
+        return AiNative_Copilot_Model_Generator::PRODUCT_FIELDS;
+    }
+
+    public function getCurrentCmsCss(): string
+    {
+        if ($this->getEntityType() !== 'cms') {
+            return '';
+        }
+
+        $page = Mage::registry('cms_page');
+
+        return $page
+            ? (string) $page->getData(
+                AiNative_Copilot_Model_Cms_Style::DATA_KEY
+            )
+            : '';
     }
 
     public function getTones(): array

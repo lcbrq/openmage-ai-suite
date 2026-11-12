@@ -27,6 +27,23 @@ class AiNative_Copilot_Adminhtml_Ainative_CopilotController extends Mage_Adminht
                     throw new AiNative_Core_Exception('Category not found. Save it once before generating.');
                 }
                 $result = $generator->forCategory($category, $fields, $options, $context);
+            } elseif ($type === 'cms') {
+                $this->assert('admin/cms/page/save');
+
+                $page = Mage::getModel('cms/page')->load($id);
+
+                if (!$page->getId()) {
+                    throw new AiNative_Core_Exception(
+                        'CMS page not found. Save it once before generating.'
+                    );
+                }
+
+                $result = $generator->forCmsPage(
+                    $page,
+                    $fields,
+                    $options,
+                    $context
+                );
             } else {
                 $this->assert('admin/catalog/products');
                 $product = Mage::getModel('catalog/product')->setStoreId($storeId)->load($id);
@@ -42,7 +59,18 @@ class AiNative_Copilot_Adminhtml_Ainative_CopilotController extends Mage_Adminht
                 }
                 $result = $generator->forProduct($product, $fields, $options, $context);
             }
-            return ['fields' => $result['fields'], 'tokens' => $result['tokens_in'] + $result['tokens_out']];
+
+            $response = [
+                'fields' => $result['fields'],
+                'tokens' => $result['tokens_in']
+                    + $result['tokens_out'],
+            ];
+
+            if (array_key_exists('css', $result)) {
+                $response['css'] = (string) $result['css'];
+            }
+
+            return $response;
         });
     }
 

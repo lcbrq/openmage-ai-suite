@@ -47,4 +47,41 @@ class AiNative_Copilot_Model_Observer
     {
         Mage::register('ainative_copilot_product_form', true, true);
     }
+
+    public function materializeCmsPageStyle(
+        Varien_Event_Observer $observer
+    ): void {
+        $page = $observer->getEvent()->getPage()
+            ?: $observer->getEvent()->getObject();
+
+        if (!$page instanceof Mage_Cms_Model_Page) {
+            return;
+        }
+
+        Mage::getModel('ainative_copilot/cms_style')->ensureAsset($page);
+    }
+
+    public function prepareCmsPageStyle(
+        Varien_Event_Observer $observer
+    ): void {
+
+        $page = $observer->getEvent()->getPage();
+
+        if (!$page instanceof Mage_Cms_Model_Page) {
+            return;
+        }
+
+        /** @var AiNative_Copilot_Model_Cms_Style $style */
+        $style = Mage::getModel('ainative_copilot/cms_style');
+        $relativePath = $style->ensureAsset($page);
+
+        if ($relativePath === null) {
+            return;
+        }
+
+        $style->preparePage(
+            $page,
+            $style->getAssetUrl($relativePath)
+        );
+    }
 }

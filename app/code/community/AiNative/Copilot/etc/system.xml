@@ -51,6 +51,24 @@
                             <show_in_store>1</show_in_store>
                             <comment>Words to use/avoid, claims never to make, formatting preferences. Added to every generation prompt.</comment>
                         </brand_guidelines>
+                        <cms_page_style_guidelines translate="label comment">
+                            <label>CMS Page Styling Guidelines</label>
+                            <frontend_type>textarea</frontend_type>
+                            <sort_order>45</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>1</show_in_store>
+                            <comment>Optional CMS-specific composition and styling guidance. Public storefront reference pages remain the primary source of visual direction. Existing theme classes may be reused and new page-specific classes may use the ai-cms- prefix.</comment>
+                        </cms_page_style_guidelines>
+                        <cms_design_reference_paths translate="label comment">
+                            <label>CMS Design Reference Pages</label>
+                            <frontend_type>textarea</frontend_type>
+                            <sort_order>47</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>1</show_in_store>
+                            <comment>Relative storefront paths used as visual references for CMS generation. Enter one path per line, for example: /, /customer/account/login/, /checkout/cart/. Maximum 3 pages.</comment>
+                        </cms_design_reference_paths>
                         <jobs_per_run translate="label comment">
                             <label>Bulk Jobs per Cron Run</label>
                             <frontend_type>text</frontend_type>

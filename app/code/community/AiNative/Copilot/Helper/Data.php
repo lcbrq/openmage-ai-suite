@@ -29,6 +29,49 @@ class AiNative_Copilot_Helper_Data extends Mage_Core_Helper_Abstract
         return trim((string) Mage::getStoreConfig('ainative_copilot/general/brand_guidelines', $storeId));
     }
 
+    public function getCmsPageStyleGuidelines(?int $storeId = null): string
+    {
+        return trim((string) Mage::getStoreConfig('ainative_copilot/general/cms_page_style_guidelines', $storeId));
+    }
+
+    public function getCmsDesignReferencePaths(
+        ?int $storeId = null
+    ): array {
+        $value = (string) Mage::getStoreConfig(
+            'ainative_copilot/general/cms_design_reference_paths',
+            $storeId
+        );
+
+        $paths = preg_split(
+            '/[\r\n,]+/',
+            $value,
+            -1,
+            PREG_SPLIT_NO_EMPTY
+        ) ?: [];
+
+        $result = [];
+
+        foreach ($paths as $path) {
+            $path = trim($path);
+
+            if (
+                $path === ''
+                || preg_match('#^[a-z][a-z0-9+.-]*://#i', $path)
+            ) {
+                continue;
+            }
+
+            $path = '/' . ltrim($path, '/');
+            $result[$path] = $path;
+
+            if (count($result) === 3) {
+                break;
+            }
+        }
+
+        return array_values($result);
+    }
+
     public function getJobsPerRun(): int
     {
         return max(1, (int) Mage::getStoreConfig('ainative_copilot/general/jobs_per_run'));

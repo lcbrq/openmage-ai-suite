@@ -10,7 +10,9 @@
         "ext-curl": "*",
         "ext-json": "*",
         "ext-mbstring": "*",
-        "magento-hackathon/magento-composer-installer": "^4.0"
+        "ext-dom": "*",
+        "magento-hackathon/magento-composer-installer": "^4.0",
+        "sabberworm/php-css-parser": "^9.3"
     },
     "require-dev": {
         "phpunit/phpunit": "^10.5",

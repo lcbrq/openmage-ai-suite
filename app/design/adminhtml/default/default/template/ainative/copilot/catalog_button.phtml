@@ -10,7 +10,7 @@
         <label><?php echo $this->__('Fields'); ?></label>
         <div class="ainative-checks">
           <?php foreach ($this->getFields() as $f): ?>
-            <label><input type="checkbox" name="ainative_fields" value="<?php echo $f; ?>" <?php echo in_array($f, ['description', 'short_description', 'meta_title', 'meta_description'], true) ? 'checked' : ''; ?>> <?php echo $f; ?></label>
+            <label><input type="checkbox" name="ainative_fields" value="<?php echo $f; ?>" <?php echo in_array($f, ['content', 'description', 'short_description', 'meta_title', 'meta_description'], true) ? 'checked' : ''; ?>> <?php echo $f; ?></label>
           <?php endforeach; ?>
         </div>
       </div>
@@ -55,6 +55,7 @@ document.addEventListener('DOMContentLoaded', function () {
     generateUrl: <?php echo json_encode($this->getGenerateUrl()); ?>,
     searchUrl: <?php echo json_encode($this->getSearchUrl()); ?>,
     formKey: <?php echo json_encode($this->getFormKey()); ?>,
+    cmsCss: <?php echo json_encode($this->getCurrentCmsCss(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>,
     labels: { button: <?php echo json_encode($this->__('Generate with AI')); ?>, working: <?php echo json_encode($this->__('Generating…')); ?>, current: <?php echo json_encode($this->__('Current')); ?>, proposed: <?php echo json_encode($this->__('Proposed')); ?>, use: <?php echo json_encode($this->__('Use this')); ?> }
   });
 });

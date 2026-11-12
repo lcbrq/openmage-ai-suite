@@ -47,7 +47,9 @@
     var modal = document.getElementById('ainative-copilot-modal');
     if (!modal) return;
     var fieldMap = cfg.entityType === 'category'
-      ? { description: 'group_5description', meta_title: 'group_5meta_title', meta_keywords: 'group_5meta_keywords', meta_description: 'group_5meta_description' }
+    ? { description: 'group_5description', meta_title: 'group_5meta_title', meta_keywords: 'group_5meta_keywords', meta_description: 'group_5meta_description' }
+    : cfg.entityType === 'cms'
+      ? { content: 'page_content' }
       : { name: 'name', short_description: 'short_description', description: 'description', meta_title: 'meta_title', meta_keyword: 'meta_keyword', meta_description: 'meta_description' };
 
     function findInput(field) {
@@ -67,7 +69,33 @@
     }
 
     // inject a button next to the name field (or into the page header as fallback)
-    var anchor = findInput(cfg.entityType === 'category' ? 'description' : 'name');
+    var anchor = findInput(
+      cfg.entityType === 'product'
+        ? 'name'
+        : (cfg.entityType === 'cms' ? 'content' : 'description')
+    );
+
+    var cmsCssInput = null;
+
+    if (cfg.entityType === 'cms') {
+      var editForm = (anchor && anchor.form)
+        || document.getElementById('edit_form');
+
+      if (editForm) {
+        cmsCssInput = document.getElementById('ainative_css');
+
+        if (!cmsCssInput) {
+          cmsCssInput = document.createElement('input');
+          cmsCssInput.type = 'hidden';
+          cmsCssInput.id = 'ainative_css';
+          cmsCssInput.name = 'ainative_css';
+          editForm.appendChild(cmsCssInput);
+        }
+
+        cmsCssInput.value = cfg.cmsCss || '';
+      }
+    }
+
     var btn = document.createElement('button');
     btn.type = 'button'; btn.className = 'ainative-inline-btn'; btn.textContent = cfg.labels.button;
     btn.addEventListener('click', function () { modal.hidden = false; });
@@ -76,7 +104,7 @@
 
     modal.querySelectorAll('[data-ainative-close]').forEach(function (b) { b.addEventListener('click', function () { modal.hidden = true; }); });
     var status = document.getElementById('ainative-status'), preview = document.getElementById('ainative-preview'), applyBtn = modal.querySelector('[data-ainative-apply]');
-    var last = {};
+    var last = {}, lastCss = null;
 
     var ref = document.getElementById('ainative_ref'), refId = document.getElementById('ainative_ref_id'), refList = document.getElementById('ainative_ref_list');
     if (ref) {
@@ -106,6 +134,7 @@
         reference_product_id: refId ? refId.value : '', name: nameEl ? nameEl.value : '', sku: skuEl ? skuEl.value : ''
       }, cfg.formKey).then(function (j) {
         last = j.fields || {};
+        lastCss = typeof j.css === 'string' ? j.css : null;
         status.textContent = 'Done (' + (j.tokens || 0) + ' tokens).';
         preview.innerHTML = Object.keys(last).map(function (f) {
           var cur = findInput(f); var curVal = cur ? cur.value : '';
@@ -119,11 +148,35 @@
 
     applyBtn.addEventListener('click', function () {
       var n = 0;
+      var contentApplied = false;
+
       preview.querySelectorAll('.ainative-field').forEach(function (box) {
         if (!box.querySelector('[data-ainative-pick]').checked) return;
-        if (setValue(box.getAttribute('data-field'), box.querySelector('[data-ainative-value]').value)) n++;
+
+        var field = box.getAttribute('data-field');
+        var value = box.querySelector('[data-ainative-value]').value;
+
+        if (setValue(field, value)) {
+          n++;
+
+          if (field === 'content') {
+            contentApplied = true;
+          }
+        }
       });
-      status.textContent = n + ' field(s) applied to the form. Save the ' + cfg.entityType + ' to persist.';
+
+      if (contentApplied && cmsCssInput && lastCss !== null) {
+        cmsCssInput.value = lastCss;
+        cmsCssInput.dispatchEvent(
+          new Event('change', { bubbles: true })
+        );
+      }
+
+      status.textContent = n
+        + ' field(s) applied to the form. Save the '
+        + cfg.entityType
+        + ' to persist.';
+
       modal.hidden = true;
     });
   };

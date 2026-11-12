@@ -8,7 +8,7 @@
 <config>
     <modules>
         <AiNative_Copilot>
-            <version>1.0.0</version>
+            <version>1.1.0</version>
         </AiNative_Copilot>
     </modules>
 
@@ -41,7 +41,31 @@
                 </setup>
             </ainative_copilot_setup>
         </resources>
+
+        <events>
+            <cms_page_save_after>
+                <observers>
+                    <ainative_copilot_cms_page_style_save>
+                        <class>ainative_copilot/observer</class>
+                        <method>materializeCmsPageStyle</method>
+                    </ainative_copilot_cms_page_style_save>
+                </observers>
+            </cms_page_save_after>
+        </events>
     </global>
+
+    <frontend>
+        <events>
+            <cms_page_render>
+                <observers>
+                    <ainative_copilot_cms_page_style_render>
+                        <class>ainative_copilot/observer</class>
+                        <method>prepareCmsPageStyle</method>
+                    </ainative_copilot_cms_page_style_render>
+                </observers>
+            </cms_page_render>
+        </events>
+    </frontend>
 
     <admin>
         <routers>
@@ -104,6 +128,26 @@
                 <tone>professional</tone>
                 <language></language>
                 <brand_guidelines></brand_guidelines>
+                <cms_page_style_guidelines>
+                    <![CDATA[
+                    Treat the real public storefront reference pages as the primary visual source. Reproduce their design language: typography, colours, content width, spacing scale, section rhythm, surfaces, borders, radii, shadows and responsive behaviour.
+
+                    Before generating the response, internally identify the page purpose, primary audience, narrative order and visual hierarchy. Do not output this planning.
+
+                    Create a complete, deliberately designed storefront page rather than an unstyled document, a plain text stack or a collection of identical white cards. Choose the number and type of sections according to the page purpose. Use varied but coherent compositions such as full-width bands, split layouts, steps, highlights, panels and focused calls to action only where they help communicate the content.
+
+                    When the page functions as a landing page, campaign page or recruitment page, create a visually distinctive introductory hero. Give it clear hierarchy, generous spacing and a purposeful background treatment. When no approved image is available, use CSS gradients, shapes and pseudo-elements as decoration instead of inventing an image or leaving the hero visually empty.
+
+                    Reuse existing storefront classes when they genuinely fit the required component. For components requiring their own appearance, create clear descriptive classes using the ai-cms- prefix and provide complete CSS for every generated ai-cms-* class. Do not generate decorative class names without defining their layout and appearance.
+
+                    The generated CSS must establish desktop and mobile layouts, section spacing, typography hierarchy, colours, surfaces and component states. Do not rely on browser-default presentation for major page components. Keep the result responsive, readable and consistent with the reference storefront.
+
+                    Store Context is a source of available facts, not a checklist. Use only information relevant to the requested page. Do not mix different customer and business processes. Do not invent facts, benefits, prices, conditions, links, addresses, images or other assets.
+
+                    Return semantic and accessible HTML. Do not add images or link destinations unless they were explicitly provided.
+                    ]]>
+                </cms_page_style_guidelines>
+                <cms_design_reference_paths>/</cms_design_reference_paths>
                 <jobs_per_run>10</jobs_per_run>
                 <ask_history>20</ask_history>
             </general>
